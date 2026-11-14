@@ -4411,7 +4411,14 @@ const duoMemberDef = (m, e) => ({ name: m.name, maxHp: KEY_PAGES[m.id].enemyHp, 
 // 보상 책 이름 (편린처럼 따로 정한 책이 아니면 "○○의 책")
 const bookName = (key) => ENEMIES[key].book || `${ENEMIES[key].name}의 책`;
 // 앞 스테이지를 이겨야 열리는 스테이지 (불안정한 에고::필립 ← 쐐기 사무소)
-const stageLocked = (key) => !!ENEMIES[key].requires && !SAVE.cleared[ENEMIES[key].requires];
+// 분류 안에서도 앞 스테이지를 이겨야 다음 스테이지가 열림 (이미 이긴 스테이지는 늘 열림)
+function stageLocked(key) {
+  if (SAVE.cleared[key]) return false;
+  if (ENEMIES[key].requires && !SAVE.cleared[ENEMIES[key].requires]) return true;
+  const keys = Object.keys(ENEMIES).filter((k) => stageChapter(k) === stageChapter(key));
+  const i = keys.indexOf(key);
+  return i > 0 && !SAVE.cleared[keys[i - 1]];
+}
 // 전투에 쓰는 상대 정보: 이름 + 핵심 책장의 상대용 체력·내성
 function enemyFighterDef(key = currentEnemy) {
   const e = ENEMIES[key];
@@ -11564,6 +11571,11 @@ function renderStages() {
 function stageHtml(key) {
   const def = ENEMIES[key];
   const locked = stageLocked(key);
+  // 아직 열리지 않은 스테이지: 이름·설명·조건 없이 물음표만
+  if (locked) {
+    return `<section class="stage locked unknown"><div class="stage-head"><div><h2>?</h2></div>
+      <button type="button" class="btn" disabled>🔒</button></div></section>`;
+  }
   return `
     <section class="stage ${key === currentEnemy ? 'last' : ''} ${SAVE.cleared[key] ? 'cleared' : 'uncleared'} ${def.special ? 'special' : ''} ${locked ? 'locked' : ''}">
       <div class="stage-head">
